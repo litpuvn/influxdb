@@ -8,7 +8,7 @@ import ExportOverlay from 'src/shared/components/ExportOverlay'
 import {dashboardToTemplate} from 'src/shared/utils/resourceToTemplate'
 
 // APIs
-import {getDashboard, readView} from 'src/dashboards/apis/v2'
+import {getDashboard, getView} from 'src/dashboards/apis/v2'
 
 interface State {
   dashboardTemplate: Record<string, any>
@@ -27,7 +27,7 @@ class DashboardExportOverlay extends PureComponent<Props, State> {
     } = this.props
 
     const dashboard = await getDashboard(dashboardID)
-    const pendingViews = dashboard.cells.map(c => readView(dashboardID, c.id))
+    const pendingViews = dashboard.cells.map(c => getView(dashboardID, c.id))
     const views = await Promise.all(pendingViews)
     const dashboardTemplate = dashboardToTemplate(dashboard, views)
 
