@@ -1,6 +1,6 @@
 import _ from 'lodash'
 import {getDeep} from 'src/utils/wrappers'
-import {Task, Label, Dashboard} from 'src/types/v2'
+import {Task, Label, Dashboard, Cell, View} from 'src/types/v2'
 import {ITemplate, TemplateType} from '@influxdata/influx'
 
 const CURRENT_TEMPLATE_VERSION = '1'
@@ -96,8 +96,87 @@ export const taskToTemplate = (
   return template
 }
 
-// Todo: update template to match task format
-export const dashboardToTemplate = (dashboard: Dashboard) => ({
-  meta: {chronografVersion: '2.0'},
-  dashboard,
+const viewToIncluded = (view: View) => ({
+  type: TemplateType.View,
+  id: view.id,
+  attributes: view
 })
+const viewToRelationship = (view: View) => ({
+  type: TemplateType.View, id: view.id
+})
+
+
+const cellToIncluded = (cell: Cell, views: View[]) =>  {
+  const cellView = views.find(v => v.id === cell.id)
+  const viewRelationship = viewToRelationship(cellView)
+
+  return {
+    id: cell.id,
+    type: TemplateType.Cell,
+    attributes: cell,
+    relationships: {
+      [TemplateType.View]: {
+        data: viewRelationship
+      }
+    }
+  }
+}
+
+const cellToRelationship = (cell: Cell) => ({
+  type: TemplateType.Cell, id: cell.id
+})
+
+// Todo: update template to match task format
+export const dashboardToTemplate = (
+  dashboard: Dashboard,
+  views: View[],
+  baseTemplate = blankTaskTemplate(),
+) => {
+  const dashboardName = _.get(dashboard, 'name', '')
+  const templateName = `${dashboardName}-Template`
+
+  const dashboardAttributes = _.pick(dashboard, [
+    'name',
+    'description',
+  ])
+
+  const labels = getDeep<Label[]>(dashboard, 'labels', [])
+  const includedLabels = labels.map(l => labelToIncluded(l))
+  const relationshipsLabels = labels.map(l => labelToRelationship(l))
+
+  const cells = getDeep<Cell[]>(dashboard, 'cells', [])
+  const includedCells = cells.map(c => cellToIncluded(c, views))
+  const relationshipsCells = cells.map(c => cellToRelationship(c))
+
+  const includedViews = views.map(v => viewToIncluded(v))
+
+  const template = {
+    ...baseTemplate,
+    meta: {
+      ...baseTemplate.meta,
+      name: templateName,
+      version: CURRENT_TEMPLATE_VERSION,
+      description: `template created from dashboard: ${dashboardName}`,
+    },
+    content: {
+      ...baseTemplate.content,
+      data: {
+        ...baseTemplate.content.data,
+        type: TemplateType.Dashboard,
+        attributes: dashboardAttributes,
+        relationships: {
+          [TemplateType.Label]: {data: relationshipsLabels},
+          [TemplateType.Cell]: {data: relationshipsCells}
+        },
+      },
+      included: [
+        ...baseTemplate.content.included,
+        ...includedLabels,
+        ...includedCells,
+        ...includedViews
+      ],
+    },
+  }
+
+  return template
+}
