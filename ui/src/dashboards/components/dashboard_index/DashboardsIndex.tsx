@@ -66,19 +66,17 @@ type Props = DispatchProps & StateProps & OwnProps
 
 interface State {
   searchTerm: string
-  isImportingDashboard: boolean
   isExportingDashboard: boolean
   exportDashboard: Dashboard
 }
 
 @ErrorHandling
-class DashboardIndex extends PureComponent<Props, State> {
+class DashboardsIndex extends PureComponent<Props, State> {
   constructor(props: Props) {
     super(props)
 
     this.state = {
       searchTerm: '',
-      isImportingDashboard: false,
       isExportingDashboard: false,
       exportDashboard: null,
     }
@@ -105,7 +103,7 @@ class DashboardIndex extends PureComponent<Props, State> {
             <Page.Header.Right>
               <AddResourceDropdown
                 onSelectNew={this.handleCreateDashboard}
-                onSelectImport={this.handleToggleImportOverlay}
+                onSelectImport={this.handleOpenImportOverlay}
                 resourceName="Dashboard"
               />
             </Page.Header.Right>
@@ -136,8 +134,8 @@ class DashboardIndex extends PureComponent<Props, State> {
             </div>
           </Page.Contents>
         </Page>
-        {this.importOverlay}
         {this.exportOverlay}
+        {this.props.children}
       </>
     )
   }
@@ -198,25 +196,14 @@ class DashboardIndex extends PureComponent<Props, State> {
     this.setState({searchTerm})
   }
 
-  private handleToggleImportOverlay = (): void => {
-    this.setState({isImportingDashboard: !this.state.isImportingDashboard})
+  private handleOpenImportOverlay = (): void => {
+    const {router} = this.props
+
+    router.push('/dashboards/import')
   }
 
   private handleToggleExportOverlay = (): void => {
     this.setState({isExportingDashboard: !this.state.isExportingDashboard})
-  }
-
-  private get importOverlay(): JSX.Element {
-    const {isImportingDashboard} = this.state
-    const {orgs} = this.props
-
-    return (
-      <ImportDashboardOverlay
-        onDismissOverlay={this.handleToggleImportOverlay}
-        orgID={get(orgs, '0.id', '')}
-        isVisible={isImportingDashboard}
-      />
-    )
   }
 
   private get exportOverlay(): JSX.Element {
@@ -257,4 +244,4 @@ const mdtp: DispatchProps = {
 export default connect<StateProps, DispatchProps, OwnProps>(
   mstp,
   mdtp
-)(DashboardIndex)
+)(DashboardsIndex)

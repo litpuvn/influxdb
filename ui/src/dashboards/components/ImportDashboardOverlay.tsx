@@ -2,6 +2,7 @@
 import React, {PureComponent} from 'react'
 import _ from 'lodash'
 import {connect} from 'react-redux'
+import {withRouter, WithRouterProps} from 'react-router'
 
 // Constants
 import {dashboardImportFailed} from 'src/shared/copy/notifications'
@@ -15,9 +16,7 @@ import ImportOverlay from 'src/shared/components/ImportOverlay'
 import {createDashboardFromTemplate as createDashboardFromTemplateAction} from 'src/dashboards/actions/v2'
 
 interface OwnProps {
-  onDismissOverlay: () => void
   orgID: string
-  isVisible: boolean
 }
 interface DispatchProps {
   notify: typeof notifyAction
@@ -25,7 +24,7 @@ interface DispatchProps {
   populateDashboards: typeof getDashboardsAsync
 }
 
-type Props = OwnProps & DispatchProps
+type Props = OwnProps & DispatchProps & WithRouterProps
 
 class ImportDashboardOverlay extends PureComponent<Props> {
   constructor(props: Props) {
@@ -33,12 +32,9 @@ class ImportDashboardOverlay extends PureComponent<Props> {
   }
 
   public render() {
-    const {isVisible, onDismissOverlay} = this.props
-
     return (
       <ImportOverlay
-        isVisible={isVisible}
-        onDismissOverlay={onDismissOverlay}
+        onDismissOverlay={this.handleDismissOverlay}
         resourceName="Dashboard"
         onSubmit={this.handleUploadDashboard}
       />
@@ -51,7 +47,6 @@ class ImportDashboardOverlay extends PureComponent<Props> {
     const {
       notify,
       createDashboardFromTemplate,
-      onDismissOverlay,
       populateDashboards,
       orgID,
     } = this.props
@@ -60,18 +55,23 @@ class ImportDashboardOverlay extends PureComponent<Props> {
       const template = JSON.parse(uploadContent)
 
       if (_.isEmpty(template)) {
-        onDismissOverlay()
+        this.handleDismissOverlay()
         return
       }
 
       await createDashboardFromTemplate(template, orgID)
       await populateDashboards()
-      onDismissOverlay()
+      this.handleDismissOverlay()
     } catch (error) {
       notify(dashboardImportFailed(error))
     }
   }
+
+  private handleDismissOverlay = () => {
+    this.props.router.goBack()
+  }
 }
+
 const mdtp: DispatchProps = {
   notify: notifyAction,
   createDashboardFromTemplate: createDashboardFromTemplateAction,
@@ -81,4 +81,4 @@ const mdtp: DispatchProps = {
 export default connect<{}, DispatchProps, OwnProps>(
   null,
   mdtp
-)(ImportDashboardOverlay)
+)(withRouter(ImportDashboardOverlay))
